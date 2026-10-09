@@ -1,0 +1,29 @@
+name: Build APK
+on: [push, workflow_dispatch]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Build
+        run: |
+          set -e
+          if [ -f mr-velvets-workshop.zip ]; then mkdir -p game && unzip -oq mr-velvets-workshop.zip -d game && cd game; fi
+          npm install
+          mkdir -p www && cp index.html www/ && cp node_modules/three/build/three.min.js www/
+          npx cap add android
+          sed -i '0,/<activity/s//<activity android:screenOrientation="landscape"/' android/app/src/main/AndroidManifest.xml
+          npx cap sync android
+          cd android && chmod +x gradlew && ./gradlew assembleDebug
+          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/velvets-workshop.apk"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: velvets-workshop-apk
+          path: velvets-workshop.apk
